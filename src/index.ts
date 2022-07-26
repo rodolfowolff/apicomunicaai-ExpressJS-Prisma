@@ -6,13 +6,12 @@ const prisma = new PrismaClient();
 
 const app = express();
 const port = process.env.PORT || 3000;
+const cachedTodosKey = "cachedTodos";
 
 app.use(express.json());
 
 app.get("/todos", async (req, res) => {
   try {
-    const cachedTodosKey = "cachedTodos";
-
     const cachedTodos = await redis.get(cachedTodosKey);
 
     if (cachedTodos) {
@@ -41,6 +40,7 @@ app.post("/todos", async (req, res) => {
     },
   });
 
+  redis.del(cachedTodosKey);
   return res.json(todo);
 });
 
