@@ -32,16 +32,21 @@ app.get("/todos", async (req, res) => {
 });
 
 app.post("/todos", async (req, res) => {
-  const todo = await prisma.todo.create({
-    data: {
-      completed: false,
-      createdAt: new Date(),
-      text: req.body.text ?? "Empty todo",
-    },
-  });
+  try {
+    const todo = await prisma.todo.create({
+      data: {
+        completed: false,
+        createdAt: new Date(),
+        text: req.body.text ?? "Empty todo",
+      },
+    });
 
-  redis.del(cachedTodosKey);
-  return res.json(todo);
+    redis.del(cachedTodosKey);
+    return res.json(todo);
+  } catch (error: any) {
+    console.error(error);
+    return res.status(500).json({ error: error.message });
+  }
 });
 
 app.get("/", async (req, res) => {
