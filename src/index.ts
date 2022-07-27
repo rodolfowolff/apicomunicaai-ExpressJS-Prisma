@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import express from "express";
-import redis from "./lib/cache";
+import Cache from "./lib/cache";
+import { customRedisRateLimiter } from "./middleware/rateLimiter";
 
 const prisma = new PrismaClient();
 
@@ -12,19 +13,42 @@ app.use(express.json());
 
 app.get("/todos", async (req, res) => {
   try {
-    const cachedTodos = await redis.get(cachedTodosKey);
+    const cachedTodos = await Cache.get(cachedTodosKey);
 
-    if (cachedTodos) {
-      return res.json(JSON.parse(cachedTodos));
-    }
+    if (cachedTodos) return cachedTodos;
 
     const todos = await prisma.todo.findMany({
       orderBy: { createdAt: "desc" },
     });
 
-    await redis.set(cachedTodosKey, JSON.stringify(todos));
+    Cache.set(cachedTodosKey, todos, 60 * 5); // cache expire 5 minutes
 
     return res.json(todos);
+  } catch (error: any) {
+    console.error(error);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+app.get("/todos/:id", async (req, res) => {
+  const { id } = req.params;
+
+  if (!id) return res.status(400).json({ error: "id is required" });
+
+  try {
+    const cachedTodo = await Cache.get(`${cachedTodosKey}-${id}`);
+
+    if (cachedTodo) return cachedTodo;
+
+    const todo = await prisma.todo.findFirst({
+      where: { id },
+    });
+
+    if (!todo) return res.status(404).json({ error: "todo not found" });
+
+    Cache.set(`${cachedTodosKey}-${id}`, todo, 60 * 1); // cache expire 1 minutes
+
+    return res.json(todo);
   } catch (error: any) {
     console.error(error);
     return res.status(500).json({ error: error.message });
@@ -41,7 +65,7 @@ app.post("/todos", async (req, res) => {
       },
     });
 
-    redis.del(cachedTodosKey);
+    Cache.delPrefix(cachedTodosKey);
     return res.json(todo);
   } catch (error: any) {
     console.error(error);
@@ -49,8 +73,11 @@ app.post("/todos", async (req, res) => {
   }
 });
 
-app.get("/", async (req, res) => {
-  res.send("welcome to the api");
+app.get("/", customRedisRateLimiter, async (req, res) => {
+  return res.json({ message: "Hello World" });
+  // await customRedisRateLimiter(req, res, () => {
+  //   return res.json({ message: "Hello World" });
+  // });
 });
 
 app.listen(port, () => {
