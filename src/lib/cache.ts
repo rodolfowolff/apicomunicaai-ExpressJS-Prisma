@@ -27,7 +27,7 @@ class Cache {
   }
 
   async delPrefix(prefix: string): Promise<any> {
-    const keysRedis = (await this.redis.keys(`cache:${prefix}:*`)).map(
+    const keysRedis = (await this.redis.keys(`cache:${prefix}`)).map(
       (key) => key.replace("cache:", "") // remove prefix
     );
     return this.redis.del(keysRedis);

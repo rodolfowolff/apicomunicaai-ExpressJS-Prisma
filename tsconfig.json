@@ -1,13 +1,22 @@
 {
   "compilerOptions": {
-    "outDir": "dist",
-
-    "incremental": true,
-    "target": "es6",
-    "module": "commonjs",
+    "sourceMap": true,
+    "outDir": "./dist",
     "strict": true,
+    "lib": ["esnext"],
     "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true
-  }
+    "forceConsistentCasingInFileNames": true,
+    "baseUrl": ".",
+    "typeRoots": ["*./node_modules/@types", "./app/@types"],
+    "allowSyntheticDefaultImports": true,
+    "paths": {
+      "@/*": ["app/*"]
+    }
+  },
+  "include": ["**/*.ts"],
+  "exclude": ["node_modules", "**/*.spec.ts"]
 }
