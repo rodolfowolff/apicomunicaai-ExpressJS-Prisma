@@ -3,7 +3,7 @@ import { NextFunction, Request, Response } from "express";
 import redis from "../config/redis";
 
 const WINDOW_SIZE_IN_HOURS = 1;
-const MAX_WINDOW_REQUEST_COUNT = 10;
+const MAX_WINDOW_REQUEST_COUNT = 3;
 const WINDOW_LOG_INTERVAL_IN_HOURS = 1;
 
 export const customRedisRateLimiter = async (
@@ -43,7 +43,7 @@ export const customRedisRateLimiter = async (
       0
     );
     // if number of requests made is greater than or equal to the desired maximum, return error
-    if (totalWindowRequestsCount >= MAX_WINDOW_REQUEST_COUNT) {
+    if (totalWindowRequestsCount > MAX_WINDOW_REQUEST_COUNT) {
       res
         .status(429)
         .send(

@@ -1,33 +1,36 @@
 import IOredis from "ioredis";
-import redisConfig from "../config/redis";
 
 class Cache {
   private redis: IOredis;
 
   constructor() {
-    this.redis = redisConfig;
+    this.redis = new IOredis({
+      host: process.env.REDIS_HOST,
+      port: Number(process.env.REDIS_PORT),
+      password: process.env.REDIS_PASSWORD,
+      keyPrefix: "cache:",
+    });
   }
 
   async get(key: string): Promise<any> {
     const data = await this.redis.get(key);
-    return JSON.parse(data || "{}");
+    return data ? JSON.parse(data) : null;
   }
 
   set(key: string, value: any, timeExp?: number) {
-    const defaultTimeExp = 60 * 15; // 15 minutes
-    this.redis.set(key, JSON.stringify(value), "EX", timeExp || defaultTimeExp);
+    const time = 60 * 15; // 15 minutes
+    return this.redis.set(key, JSON.stringify(value), "EX", timeExp || time);
   }
 
   del(key: string) {
-    this.redis.del(key);
+    return this.redis.del(key);
   }
 
   async delPrefix(prefix: string): Promise<any> {
-    const keys = (await this.redis.keys(`chace:${prefix}:*`)).map(
-      (key) => key.replace("chace:", "") // remove prefix
+    const keysRedis = (await this.redis.keys(`cache:${prefix}:*`)).map(
+      (key) => key.replace("cache:", "") // remove prefix
     );
-
-    return this.redis.del(keys);
+    return this.redis.del(keysRedis);
   }
 }
 
