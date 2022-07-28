@@ -13,6 +13,8 @@ app.use(express.json());
 
 app.get("/todos", async (req, res) => {
   try {
+    var ip = req.headers["x-forwarded-for"] || req.socket.remoteAddress || null;
+    console.log("ipzada: ", ip);
     const cachedTodos = await Cache.get(cachedTodosKey);
 
     if (cachedTodos) return res.json(cachedTodos);
