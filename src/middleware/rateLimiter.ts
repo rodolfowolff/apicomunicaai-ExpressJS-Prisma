@@ -13,7 +13,8 @@ export const customRedisRateLimiter = async (
 ) => {
   try {
     // fetch records of current user using IP address, returns null when no record is found
-    const ip = req.headers["x-forwarded-for"] || req.socket.remoteAddress;
+    const ip =
+      req.headers["x-forwarded-for"] || req.socket.remoteAddress || null;
     if (!ip) {
       return res.status(400).json({ error: "ip is required" });
     }
@@ -21,7 +22,7 @@ export const customRedisRateLimiter = async (
     const currentRequestTime = moment();
 
     //  if no record is found , create a new record for user and store to redis
-    if (record === null || record === undefined) {
+    if (record === null || record === undefined || record === "") {
       let newRecord = [];
       let requestLog = {
         requestTimeStamp: currentRequestTime.unix(),
@@ -29,20 +30,19 @@ export const customRedisRateLimiter = async (
       };
       newRecord.push(requestLog);
       await redis.set(ip as string, JSON.stringify(newRecord));
-      next();
+      return next();
     }
 
     // if record is found, parse it's value and calculate number of requests users has made within the last window
-    let data = JSON.parse(record!);
+    let data = JSON.parse(record as string) || [];
 
     let windowStartTimestamp = moment()
       .subtract(WINDOW_SIZE_IN_HOURS, "hours")
       .unix();
 
-    let requestsWithinWindow = data.filter((entry: any) => {
-      console.log(entry.requestTimeStamp > windowStartTimestamp);
-      return entry.requestTimeStamp > windowStartTimestamp;
-    });
+    let requestsWithinWindow = data.filter(
+      (entry: any) => entry.requestTimeStamp >= windowStartTimestamp
+    );
 
     let totalWindowRequestsCount = requestsWithinWindow.reduce(
       (accumulator: any, entry: any) => {
