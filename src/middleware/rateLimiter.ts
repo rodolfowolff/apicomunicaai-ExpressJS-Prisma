@@ -13,37 +13,46 @@ export const customRedisRateLimiter = async (
 ) => {
   try {
     // fetch records of current user using IP address, returns null when no record is found
-    const record = (await redis.get(req.ip)) || null;
+    const ip = req.headers["x-forwarded-for"] || req.socket.remoteAddress;
+    if (!ip) {
+      return res.status(400).json({ error: "ip is required" });
+    }
+    const record = (await redis.get(ip as string)) || null;
     const currentRequestTime = moment();
-    console.log(record);
+
     //  if no record is found , create a new record for user and store to redis
-    if (record == null) {
+    if (record === null || record === undefined) {
       let newRecord = [];
       let requestLog = {
         requestTimeStamp: currentRequestTime.unix(),
         requestCount: 1,
       };
       newRecord.push(requestLog);
-      await redis.set(req.ip, JSON.stringify(newRecord));
+      await redis.set(ip as string, JSON.stringify(newRecord));
       next();
     }
+
     // if record is found, parse it's value and calculate number of requests users has made within the last window
     let data = JSON.parse(record!);
+
     let windowStartTimestamp = moment()
       .subtract(WINDOW_SIZE_IN_HOURS, "hours")
       .unix();
+
     let requestsWithinWindow = data.filter((entry: any) => {
+      console.log(entry.requestTimeStamp > windowStartTimestamp);
       return entry.requestTimeStamp > windowStartTimestamp;
     });
-    console.log("requestsWithinWindow", requestsWithinWindow);
+
     let totalWindowRequestsCount = requestsWithinWindow.reduce(
       (accumulator: any, entry: any) => {
         return accumulator + entry.requestCount;
       },
       0
     );
+
     // if number of requests made is greater than or equal to the desired maximum, return error
-    if (totalWindowRequestsCount > MAX_WINDOW_REQUEST_COUNT) {
+    if (totalWindowRequestsCount >= MAX_WINDOW_REQUEST_COUNT) {
       res
         .status(429)
         .send(
@@ -69,7 +78,7 @@ export const customRedisRateLimiter = async (
           requestCount: 1,
         });
       }
-      await redis.set(req.ip, JSON.stringify(data));
+      await redis.set(ip as string, JSON.stringify(data));
       next();
     }
   } catch (error) {
