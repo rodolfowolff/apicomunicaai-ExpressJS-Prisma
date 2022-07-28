@@ -1,10 +1,11 @@
 import moment from "moment";
 import { NextFunction, Request, Response } from "express";
-import redis from "../config/redis";
+import Cache from "../lib/cache";
 
 const WINDOW_SIZE_IN_HOURS = 1;
-const MAX_WINDOW_REQUEST_COUNT = 3;
+const MAX_WINDOW_REQUEST_COUNT = 10;
 const WINDOW_LOG_INTERVAL_IN_HOURS = 1;
+const TIME_CLEAR_LOG_IN_MIN = 60 * 10; // 10 minutes
 
 export const customRedisRateLimiter = async (
   req: Request,
@@ -18,7 +19,7 @@ export const customRedisRateLimiter = async (
     if (!ip) {
       return res.status(400).json({ error: "ip is required" });
     }
-    const record = (await redis.get(ip as string)) || null;
+    const record = (await Cache.get(ip as string)) || null;
     const currentRequestTime = moment();
 
     //  if no record is found , create a new record for user and store to redis
@@ -29,12 +30,12 @@ export const customRedisRateLimiter = async (
         requestCount: 1,
       };
       newRecord.push(requestLog);
-      await redis.set(ip as string, JSON.stringify(newRecord));
+      await Cache.set(ip as string, newRecord, TIME_CLEAR_LOG_IN_MIN);
       return next();
     }
 
     // if record is found, parse it's value and calculate number of requests users has made within the last window
-    let data = JSON.parse(record as string) || [];
+    let data = record;
 
     let windowStartTimestamp = moment()
       .subtract(WINDOW_SIZE_IN_HOURS, "hours")
@@ -78,7 +79,7 @@ export const customRedisRateLimiter = async (
           requestCount: 1,
         });
       }
-      await redis.set(ip as string, JSON.stringify(data));
+      await Cache.set(ip as string, data, TIME_CLEAR_LOG_IN_MIN);
       next();
     }
   } catch (error) {

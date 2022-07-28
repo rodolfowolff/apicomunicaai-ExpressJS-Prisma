@@ -75,9 +75,6 @@ app.post("/todos", async (req, res) => {
 
 app.get("/", customRedisRateLimiter, async (req, res) => {
   return res.json({ message: "Hello World" });
-  // await customRedisRateLimiter(req, res, () => {
-  //   return res.json({ message: "Hello World" });
-  // });
 });
 
 app.listen(port, () => {
