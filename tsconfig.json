@@ -11,10 +11,10 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "baseUrl": ".",
-    "typeRoots": ["*./node_modules/@types", "./app/@types"],
+    "typeRoots": ["*./node_modules/@types", "./src/@types"],
     "allowSyntheticDefaultImports": true,
     "paths": {
-      "@/*": ["app/*"]
+      "@/*": ["src/*"]
     }
   },
   "include": ["**/*.ts"],
