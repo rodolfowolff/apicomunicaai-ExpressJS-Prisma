@@ -13,6 +13,7 @@ generator client {
 model Task {
   id        String   @id @default(uuid())
   createdAt DateTime @default(now())
+  title     String
   text      String
-  completed Boolean
+  completed Boolean  @default(false)
 }
