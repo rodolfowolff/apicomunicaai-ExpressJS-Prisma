@@ -1,5 +1,6 @@
 import { prisma } from "../database/prismaClient";
 import Cache, { cachedTaskKey } from "../lib/cache";
+import { BadRequestError, NotFoundError } from "..//helpers/apiError";
 
 export const findAllTask = async () => {
   const cachedTasks = await Cache.get(cachedTaskKey);
@@ -14,6 +15,7 @@ export const findAllTask = async () => {
 };
 
 export const findTaskById = async (id: string) => {
+  if (!id) throw new BadRequestError();
   const cachedTask = await Cache.get(`${cachedTaskKey}-${id}`);
   if (cachedTask) return cachedTask;
 
@@ -21,7 +23,7 @@ export const findTaskById = async (id: string) => {
     where: { id },
   });
 
-  if (!task) throw new Error("Task not found");
+  if (!task) throw new NotFoundError();
 
   Cache.set(`${cachedTaskKey}-${id}`, task, 60 * 10); // cache expire 10 minutes
   return task;
