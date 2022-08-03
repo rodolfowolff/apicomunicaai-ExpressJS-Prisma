@@ -1,6 +1,7 @@
 import IOredis from "ioredis";
 
 export const cachedTaskKey = "cachedTasks";
+export const cachedUserKey = "cachedUsers";
 
 class Cache {
   private redis: IOredis;
