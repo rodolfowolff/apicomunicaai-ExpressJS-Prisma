@@ -45,3 +45,5 @@ npx prisma db push = esquema Prisma -> banco de dados
 npx prisma db pull = banco de dados -> modelo esquema Prisma.
 
 npx prisma generate = gera o Prisma Client com base nos schema.
+
+npx prisma migrate dev --name NOME_QUE_DESEJA_COLOCAR_PARA_ESSA_MIGRAÇÃO
