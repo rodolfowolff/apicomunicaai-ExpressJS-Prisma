@@ -7,12 +7,12 @@ import {
 } from "..//helpers/apiError";
 
 export const findAll = async (status: string) => {
-  // const cachedTasks = await Cache.get(cachedUserKey);
-  // if (cachedTasks) return cachedTasks;
+  const cachedTasks = await Cache.get(`${cachedUserKey}-${status}`);
+  if (cachedTasks) return cachedTasks;
 
   const users = await prisma.user.findMany({
     where: {
-      status: status === "true" ? true : false,
+      status: status === "false" ? false : true,
     },
     select: {
       id: true,
@@ -22,7 +22,8 @@ export const findAll = async (status: string) => {
     orderBy: { createdAt: "desc" },
   });
   if (!users) throw new NotFoundError("Users not found");
-  // Cache.set(cachedUserKey, users, 60 * 10); // cache expire 10 minutes
+
+  Cache.set(`${cachedUserKey}-${status}`, users, 60 * 10); // cache expire 10 minutes
   return users;
 };
 
@@ -85,6 +86,7 @@ export const create = async (data: any) => {
   });
   if (!user) throw new BadRequestError("User not created");
 
+  Cache.delPrefix(cachedUserKey);
   return user;
 };
 
