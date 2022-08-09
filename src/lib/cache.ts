@@ -12,6 +12,9 @@ class Cache {
       port: Number(process.env.REDIS_PORT),
       password: process.env.REDIS_PASSWORD,
       keyPrefix: "cache:",
+      tls: {
+        rejectUnauthorized: false,
+      },
     });
   }
 
@@ -33,6 +36,7 @@ class Cache {
     const keysRedis = (await this.redis.keys(`cache:${prefix}`)).map(
       (key) => key.replace("cache:", "") // remove prefix
     );
+    console.log("keysRedis: ", keysRedis);
     return this.redis.del(keysRedis);
   }
 }
