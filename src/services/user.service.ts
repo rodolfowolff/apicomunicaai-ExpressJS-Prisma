@@ -6,6 +6,7 @@ import {
   NotFoundError,
   BcryptAdapter,
   DcryptAdapter,
+  createToken,
 } from "../helpers";
 
 export const create = async (data: any) => {
@@ -77,7 +78,7 @@ export const login = async (data: any) => {
       telephone: telephone.replace(/\D/g, ""),
       status: true,
     },
-    select: { id: true, password: true },
+    select: { id: true, firstName: true, password: true },
   });
 
   if (!userExists) throw new NotFoundError("User or password incorrect");
@@ -89,7 +90,15 @@ export const login = async (data: any) => {
 
   if (!isPasswordCorrect) throw new NotFoundError("User or password incorrect");
 
-  return userExists.id;
+  const token = await createToken({ id: userExists.id });
+
+  return {
+    user: {
+      id: userExists.id,
+      firstName: userExists.firstName,
+    },
+    token,
+  };
 };
 
 export const findAll = async (status: string) => {
