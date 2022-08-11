@@ -7,8 +7,7 @@ export const create = async (req: Request, res: Response) => {
 };
 
 export const login = async (req: Request, res: Response) => {
-  const { telephone, password } = req.body;
-  const user = await services.login(telephone, password);
+  const user = await services.login(req.body);
   res.status(201).json(user);
 };
 

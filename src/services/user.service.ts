@@ -1,18 +1,22 @@
 import { prisma } from "../database/prismaClient";
 import Cache, { cachedUserKey } from "../lib/cache";
-import bcrypt from "bcrypt";
 import {
   BadRequestError,
   ConflictError,
   NotFoundError,
-} from "..//helpers/apiError";
+  BcryptAdapter,
+  DcryptAdapter,
+} from "../helpers";
 
 export const create = async (data: any) => {
+  const requiredField = ["firstName", "lastName", "password", "telephone"];
+  for (const field of requiredField) {
+    if (!data[field]) {
+      throw new BadRequestError(`${field} is required to create a user`);
+    }
+  }
   const { firstName, lastName, password, telephone } = data;
-  if (!firstName || !lastName || !password || !telephone)
-    throw new BadRequestError(
-      "First name, last name, password and telephone are required"
-    );
+
   if (firstName < 2 || lastName < 2)
     throw new BadRequestError(
       "First name and last name must be at least 3 characters"
@@ -32,7 +36,9 @@ export const create = async (data: any) => {
 
   if (checkIfUserExists) throw new ConflictError();
 
-  const hashedPassword = await bcrypt.hash(password, 10);
+  const salt = 10;
+  const bcryptPassword = new BcryptAdapter(salt);
+  const hashedPassword = await bcryptPassword.encrypt(password);
 
   const telephoneNumber = telephone.replace(/\D/g, "");
 
@@ -54,10 +60,15 @@ export const create = async (data: any) => {
   return "User created successfully";
 };
 
-export const login = async (telephone: string, password: string) => {
-  if (!telephone || !password)
-    throw new BadRequestError("Telephone and password are required");
+export const login = async (data: any) => {
+  const requiredField = ["telephone", "password"];
+  for (const field of requiredField) {
+    if (!data[field]) {
+      throw new BadRequestError(`${field} is required to login`);
+    }
+  }
 
+  const { password, telephone } = data;
   if (password.length < 6)
     throw new BadRequestError("Password too short, 6 characters minimum");
 
@@ -71,7 +82,11 @@ export const login = async (telephone: string, password: string) => {
 
   if (!userExists) throw new NotFoundError("User or password incorrect");
 
-  const isPasswordCorrect = await bcrypt.compare(password, userExists.password);
+  const isPasswordCorrect = await new DcryptAdapter().decrypt(
+    password,
+    userExists.password
+  );
+
   if (!isPasswordCorrect) throw new NotFoundError("User or password incorrect");
 
   return userExists.id;
@@ -126,25 +141,27 @@ export const findById = async (id: string) => {
 export const update = async (
   id: string,
   telephone: string,
-  status: boolean
+  status?: boolean
 ) => {
   if (!id) throw new BadRequestError("Id are required");
-
-  if (typeof status !== "boolean")
+  if (status !== undefined && typeof status !== "boolean")
     throw new BadRequestError("Status must be true or false");
 
   const userData = await findById(id);
-  if (!userData) throw new NotFoundError("User not found");
+
+  const telephoneData = telephone ? telephone.replace(/\D/g, "") : null;
+  if (telephoneData && telephoneData.length !== 11)
+    throw new BadRequestError("Telephone invalid");
 
   const update = await prisma.user.update({
-    where: { id: userData.id },
+    where: { id },
     data: {
-      telephone,
-      status,
+      telephone: telephoneData || userData.telephone,
+      status: status || userData.status,
     },
   });
 
-  if (!update) throw new BadRequestError("User not updated");
+  if (!update) throw new Error();
 
   const cachedUserById = await Cache.get(`${cachedUserKey}-${id}`);
   if (cachedUserById) {
