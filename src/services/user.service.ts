@@ -16,7 +16,7 @@ export const create = async (data: any) => {
       throw new BadRequestError(`${field} is required to create a user`);
     }
   }
-  const { firstName, lastName, password, telephone } = data;
+  const { firstName, lastName, password, telephone, sectors } = data;
 
   if (firstName < 2 || lastName < 2)
     throw new BadRequestError(
@@ -33,9 +33,24 @@ export const create = async (data: any) => {
 
   const checkIfUserExists = await prisma.user.findFirst({
     where: { telephone: telephone.replace(/\D/g, "") },
+    select: { id: true },
   });
 
-  if (checkIfUserExists) throw new ConflictError();
+  if (checkIfUserExists) throw new ConflictError("User already exists");
+
+  if (sectors.length < 1)
+    throw new BadRequestError("Sectors must be at least 1");
+
+  const sectorsIds = await Promise.all(
+    sectors.map(async (sector: any) => {
+      const sectorExists = await prisma.sector.findFirst({
+        where: { id: sector.id },
+        select: { id: true },
+      });
+      if (!sectorExists) throw new BadRequestError("Sector not found");
+      return sectorExists.id;
+    })
+  );
 
   const salt = 10;
   const bcryptPassword = new BcryptAdapter(salt);
@@ -43,7 +58,7 @@ export const create = async (data: any) => {
 
   const telephoneNumber = telephone.replace(/\D/g, "");
 
-  const user = await prisma.user.create({
+  const createUser = await prisma.user.create({
     data: {
       firstName: firstName.toLowerCase(),
       lastName: lastName.toLowerCase(),
@@ -51,12 +66,23 @@ export const create = async (data: any) => {
       telephone: telephoneNumber,
     },
   });
-  if (!user) throw new BadRequestError("User not created");
+  if (!createUser) throw new BadRequestError("User not created");
 
-  const cachedUsers = await Cache.get(`${cachedUserKey}-${true}`);
-  if (cachedUsers) {
-    Cache.delPrefix(`${cachedUserKey}-${true}`);
-  }
+  const sectorsToCreate = sectorsIds.map(async (sector: any) => {
+    const userSectorsCreate = await prisma.userSectors.create({
+      data: {
+        userId: createUser.id,
+        sectorId: sector,
+      },
+    });
+    if (!userSectorsCreate)
+      throw new BadRequestError("User sectors not created");
+  });
+
+  // const cachedUsers = await Cache.get(`${cachedUserKey}-${true}`);
+  // if (cachedUsers) {
+  //   Cache.delPrefix(`${cachedUserKey}-${true}`);
+  // }
 
   return "User created successfully";
 };
@@ -138,6 +164,16 @@ export const findById = async (id: string) => {
       lastName: true,
       telephone: true,
       status: true,
+      UserSectors: {
+        select: {
+          Sector: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      },
     },
   });
 

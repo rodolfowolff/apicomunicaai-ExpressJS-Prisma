@@ -14,13 +14,15 @@ model User {
   id        String    @id @default(uuid())
   firstName String    @db.VarChar(20)
   lastName  String    @db.VarChar(20)
-  telephone String    @db.VarChar(11)
+  telephone String    @unique @db.VarChar(11)
   password  String    @db.VarChar(100)
   status    Boolean   @default(true)
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
-  tasks     Task[]
+
+  tasks       Task[]
+  UserSectors UserSectors[]
 
   @@map("users")
 }
@@ -36,5 +38,31 @@ model Task {
   User   User?   @relation(fields: [userId], references: [id])
   userId String?
 
+  Sector   Sector? @relation(fields: [sectorId], references: [id])
+  sectorId String?
+
   @@map("tasks")
+}
+
+model Sector {
+  id        String   @id @default(uuid())
+  name      String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tasks       Task[]
+  UserSectors UserSectors[]
+
+  @@map("sectors")
+}
+
+model UserSectors {
+  User   User   @relation(fields: [userId], references: [id])
+  userId String
+
+  Sector   Sector @relation(fields: [sectorId], references: [id])
+  sectorId String
+
+  @@id([userId, sectorId])
+  @@map("user_sectors")
 }

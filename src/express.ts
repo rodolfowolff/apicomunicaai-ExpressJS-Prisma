@@ -6,6 +6,7 @@ import { errorMiddleware } from "./middlewares/errors";
 // routes
 import userRoutes from "./routes/user.routes";
 import taskRoutes from "./routes/task.routes";
+import sectorRoutes from "./routes/sector.routes";
 
 export default (): Express => {
   const app = express();
@@ -15,6 +16,7 @@ export default (): Express => {
   // Routes
   userRoutes(app);
   taskRoutes(app);
+  sectorRoutes(app);
 
   // Error Handler
   app.use((_req: Request, _res: Response, next: NextFunction) => {
